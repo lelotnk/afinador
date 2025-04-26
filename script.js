@@ -53,18 +53,40 @@ async function startTuner() {
     const bufferLength = analyser.fftSize;
     const buffer = new Float32Array(bufferLength);
 
+    let lastUpdateTime = 0;
+    const UPDATE_DELAY = 200; // Delay em milissegundos
+
+    let lastValidFrequency = null;
+    let lastValidNote = null;
+    let lastValidDetune = null;
+    let lastValidTime = 0;
+    const PERSISTENCE_DELAY = 1000; // Tempo em milissegundos para manter os valores
+
     function update() {
         analyser.getFloatTimeDomainData(buffer);
         const frequency = autoCorrelate(buffer, audioContext.sampleRate);
 
-        if (frequency !== -1) {
-            document.getElementById('frequency').textContent = `Frequência: ${frequency.toFixed(2)} Hz`;
-            const noteData = getClosestGuitarNote(frequency);
-            document.getElementById('note').textContent = `Nota: ${noteData.note}`;
+        const currentTime = performance.now();
 
-            const detune = noteData.detune;
-            updateNeedle(detune);
+        if (frequency !== -1) {
+            // Atualiza os valores válidos
+            lastValidFrequency = frequency;
+            const noteData = getClosestGuitarNoteNaturalScale(frequency);
+            lastValidNote = noteData.note;
+            lastValidDetune = noteData.detune;
+            lastValidTime = currentTime;
+
+            // Atualiza a interface com os valores atuais
+            document.getElementById('frequency').textContent = `Frequência: ${frequency.toFixed(2)} Hz`;
+            document.getElementById('note').textContent = `Nota: ${noteData.note}`;
+            updateNeedle(noteData.detune);
+        } else if (currentTime - lastValidTime < PERSISTENCE_DELAY) {
+            // Mantém os últimos valores válidos por um tempo
+            document.getElementById('frequency').textContent = `Frequência: ${lastValidFrequency.toFixed(2)} Hz`;
+            document.getElementById('note').textContent = `Nota: ${lastValidNote}`;
+            updateNeedle(lastValidDetune);
         } else {
+            // Limpa os valores após o tempo de persistência
             document.getElementById('frequency').textContent = 'Frequência: -- Hz';
             document.getElementById('note').textContent = 'Nota: --';
             document.getElementById('detune').textContent = 'Detune: --';
@@ -86,7 +108,7 @@ function autoCorrelate(buffer, sampleRate) {
     }
     rms = Math.sqrt(rms / SIZE);
 
-    if (rms < 0.03) return -1;
+    if (rms < 0.01) return -1;
 
     let r1 = 0, r2 = SIZE - 1, threshold = 0.2;
     for (let i = 0; i < SIZE / 2; i++) {
@@ -138,6 +160,52 @@ function getClosestGuitarNote(frequency) {
             targetFreq = guitarNotes[note];
         }
     }
+    const detune = 1200 * Math.log2(frequency / targetFreq);
+
+    return { note: closestNote, detune: Math.floor(detune) };
+}
+
+function getClosestGuitarNoteNaturalScale(frequency) {
+    const naturalScale = [
+        { note: "A", freq: 27.5 },
+        { note: "A#", freq: 29.14 },
+        { note: "B", freq: 30.87 },
+        { note: "C", freq: 32.7 },
+        { note: "C#", freq: 34.65 },
+        { note: "D", freq: 36.71 },
+        { note: "D#", freq: 38.89 },
+        { note: "E", freq: 41.2 },
+        { note: "F", freq: 43.65 },
+        { note: "F#", freq: 46.25 },
+        { note: "G", freq: 49.0 },
+        { note: "G#", freq: 51.91 }
+    ];
+
+    let closestNote = '';
+    let minDiff = Infinity;
+    let targetFreq = 0;
+
+    // Expand the scale to cover multiple octaves
+    const expandedScale = [];
+    for (let octave = 0; octave <= 8; octave++) {
+        naturalScale.forEach(({ note, freq }) => {
+            const scaledFreq = freq * Math.pow(2, octave);
+            if (scaledFreq >= 20 && scaledFreq <= 20000) { // Human hearing range
+                expandedScale.push({ note, freq: scaledFreq });
+            }
+        });
+    }
+
+    // Find the closest note
+    expandedScale.forEach(({ note, freq }) => {
+        const diff = Math.abs(frequency - freq);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestNote = note;
+            targetFreq = freq;
+        }
+    });
+
     const detune = 1200 * Math.log2(frequency / targetFreq);
 
     return { note: closestNote, detune: Math.floor(detune) };
