@@ -1,0 +1,37 @@
+<!DOCTYPE html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afinador</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <h1>Afinador</h1>
+  <label for="instrument">Escolha o instrumento:</label>
+  <select id="instrument">
+    <option value="guitar">Violão/Guitarra</option>
+    <option value="ukulele">Ukulele</option>
+  </select>
+
+  <div class="notes-info" id="notes-info">Notas padrão: E A D G B E</div>
+  <div class="frequency" id="frequency">Frequência: -- Hz</div>
+  <div class="note" id="note">Nota: --</div>
+
+  <div id="needle-container">
+    <div id="needle"></div>
+  </div>
+
+  <div class="detune" id="detune">Detune: --</div>
+
+  <footer>
+    Desenvolvido com amor
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
